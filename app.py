@@ -62,17 +62,20 @@ with st.container():
             hacim_m3 = (adet_giris * en * kalinlik * boy) / 1000000
             if not cins: cins = "-"
             
-            # YENİ MANTIK: İndirimse eksi yap ve "İndirim" yaz. Değilse boş bırak ("")
+            # YENİ MANTIK: İndirimse metreküpü eksi yap, hesaplanacak adedi 0 say.
             if islem == "Çıkar (İndirim)":
                 hacim_m3 = -hacim_m3
                 islem_adi = "İndirim"
+                hesaplanacak_adet = 0  # Toplama etki etmemesi için
             else:
-                islem_adi = "" # Normal eklemelerde hiçbir şey yazmayacak
+                islem_adi = "" 
+                hesaplanacak_adet = adet_giris # Normal eklemede toplama dahil et
             
             yeni_veri = {
                 "İşlem": islem_adi,
                 "Ağaç Cinsi": cins,
-                "Adet": adet_giris,
+                "Adet": adet_giris, # Bu sadece ekranda görmek için
+                "Hesaba Katilan Adet": hesaplanacak_adet, # Arka planda toplanan gerçek sayı
                 "En": en,
                 "Kalınlık": kalinlik,
                 "Boy": boy,
@@ -80,9 +83,8 @@ with st.container():
             }
             st.session_state.veriler.append(yeni_veri)
             
-            # Bildirim mesajı
             if islem_adi == "İndirim":
-                st.success(f"Başarılı: {cins} için indirim düşüldü!")
+                st.success(f"Başarılı: {cins} kaleminden indirim düşüldü (Adet toplamı etkilenmedi)!")
             else:
                 st.success(f"Başarılı: {cins} listeye eklendi!")
         else:
@@ -94,23 +96,25 @@ if len(st.session_state.veriler) > 0:
     df = pd.DataFrame(st.session_state.veriler)
     
     st.subheader("📋 Detaylı İşlem Listesi")
-    df_ekran = df.copy()
+    # Ekranda "Hesaba Katilan Adet" kolonunu göstermeye gerek yok, onu gizliyoruz
+    df_ekran = df.drop(columns=["Hesaba Katilan Adet"]).copy()
     df_ekran["Hacim (m3)"] = df_ekran["Hacim (m3)"].apply(lambda x: round(x, 4))
     st.dataframe(df_ekran, use_container_width=True)
     
     st.divider()
     st.subheader("📊 Ağaç Türüne Göre Özet")
     
-    # Gruplama işlemi
-    ozet_df = df.groupby("Ağaç Cinsi")[["Adet", "Hacim (m3)"]].sum().reset_index()
-    ozet_df.columns = ["Ağaç Cinsi", "İşlem Gören Adet", "Toplam Hacim (m3)"]
+    # Gruplama işlemi (Artık sadece 'Hesaba Katilan Adet' toplanıyor, böylece indirimdeki adetler 0 sayılıyor)
+    ozet_df = df.groupby("Ağaç Cinsi")[["Hesaba Katilan Adet", "Hacim (m3)"]].sum().reset_index()
+    ozet_df.columns = ["Ağaç Cinsi", "Gerçek Adet Toplamı", "Toplam Hacim (m3)"]
     
     ozet_ekran = ozet_df.copy()
     ozet_ekran["Toplam Hacim (m3)"] = ozet_ekran["Toplam Hacim (m3)"].apply(lambda x: round(x, 4))
     st.dataframe(ozet_ekran, use_container_width=True)
 
+    # Genel toplamları da gizli kolondan çekiyoruz
     genel_toplam_m3 = df["Hacim (m3)"].sum()
-    genel_toplam_adet = df["Adet"].sum()
+    genel_toplam_adet = df["Hesaba Katilan Adet"].sum()
     
     col_t1, col_t2 = st.columns(2)
     with col_t1:
@@ -141,7 +145,7 @@ if len(st.session_state.veriler) > 0:
         elements.append(Paragraph("Detaylı Liste:", styles['Heading4']))
         elements.append(Spacer(1, 5))
         
-        # "İşlem" sütunu PDF'e geri eklendi
+        # PDF detay tablosunda gizli kolonu değil, kullanıcının girdiği adeti gösteriyoruz
         data = [['İşlem', 'Ağaç Cinsi', 'Adet', 'En', 'Kalınlık', 'Boy', 'Hacim (m3)']]
         for index, row in dataframe.iterrows():
             data.append([row['İşlem'], row['Ağaç Cinsi'], row['Adet'], row['En'], row['Kalınlık'], row['Boy'], f"{row['Hacim (m3)']:.4f}"])
@@ -165,9 +169,9 @@ if len(st.session_state.veriler) > 0:
         elements.append(Paragraph("ÖZET RAPOR (Türlere Göre Toplamlar):", styles['Heading4']))
         elements.append(Spacer(1, 5))
 
-        summary_data = [['Ağaç Cinsi', 'İşlem Gören Adet', 'Toplam Hacim (m3)']]
+        summary_data = [['Ağaç Cinsi', 'Gerçek Adet Toplamı', 'Toplam Hacim (m3)']]
         for index, row in summary_df.iterrows():
-            summary_data.append([row['Ağaç Cinsi'], row['İşlem Gören Adet'], f"{row['Toplam Hacim (m3)']:.4f}"])
+            summary_data.append([row['Ağaç Cinsi'], row['Gerçek Adet Toplamı'], f"{row['Toplam Hacim (m3)']:.4f}"])
         
         summary_data.append(["GENEL TOPLAM:", str(total_adet), f"{total_m3:.4f}"])
 
