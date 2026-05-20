@@ -39,7 +39,8 @@ if 'veriler' not in st.session_state:
 with st.container():
     st.write("---")
     
-    islem = st.radio("İşlem Türü Seçin:", ["Normal (Ekle)", "İndirim (Çıkar)"], horizontal=True)
+    # Ekranda seçim düğmesi kalacak ama tabloya yazılmayacak
+    islem = st.radio("İşlem Türü Seçin:", ["Ekle", "Çıkar (İndirim)"], horizontal=True)
     
     agac_listesi = ["İnşaatlık", "Çam", "Meşe", "Kayın", "Gürgen", "Ladin", "Kavak", "Diğer"]
     secilen = st.selectbox("Ağaç Cinsi Seç:", agac_listesi)
@@ -62,15 +63,12 @@ with st.container():
             hacim_m3 = (adet_giris * en * kalinlik * boy) / 1000000
             if not cins: cins = "-"
             
-            # YENİ MANTIK: İndirimde sadece hacim düşer, adet pozitif kalır
-            if islem == "İndirim (Çıkar)":
+            # İndirim seçildiyse metreküpü eksi yap (Adet pozitif kalır)
+            if islem == "Çıkar (İndirim)":
                 hacim_m3 = -hacim_m3
-                islem_adi = "İndirim"
-            else:
-                islem_adi = "Normal"
             
+            # LİSTEYE "İşlem" YAZISI EKLENMİYOR ARTIK
             yeni_veri = {
-                "İşlem": islem_adi,
                 "Ağaç Cinsi": cins,
                 "Adet": adet_giris,
                 "En": en,
@@ -79,7 +77,7 @@ with st.container():
                 "Hacim (m3)": hacim_m3
             }
             st.session_state.veriler.append(yeni_veri)
-            st.success(f"Başarılı: {cins} - {islem_adi} işlemi eklendi!")
+            st.success(f"Başarılı: {cins} işlemi eklendi!")
         else:
             st.error("Lütfen ölçüleri eksiksiz girin.")
 
@@ -96,7 +94,7 @@ if len(st.session_state.veriler) > 0:
     st.divider()
     st.subheader("📊 Ağaç Türüne Göre Özet")
     
-    # Gruplama işlemi (Adet normal toplanır, Hacim kendi içinde artı eksi toplanır)
+    # Gruplama işlemi
     ozet_df = df.groupby("Ağaç Cinsi")[["Adet", "Hacim (m3)"]].sum().reset_index()
     ozet_df.columns = ["Ağaç Cinsi", "İşlem Gören Adet", "Toplam Hacim (m3)"]
     
@@ -130,17 +128,17 @@ if len(st.session_state.veriler) > 0:
         elements.append(Spacer(1, 10))
         
         alt_baslik_stili = ParagraphStyle('AltBaslik', parent=styles['Normal'], fontName=tr_font, alignment=TA_CENTER)
-        elements.append(Paragraph(f"Gelişmiş Kereste Dökümü - {datetime.datetime.now().strftime('%d.%m.%Y')}", alt_baslik_stili))
+        elements.append(Paragraph(f"Kereste Hesap Dökümü - {datetime.datetime.now().strftime('%d.%m.%Y')}", alt_baslik_stili))
         elements.append(Spacer(1, 20))
 
-        elements.append(Paragraph("Detaylı İşlem Listesi:", styles['Heading4']))
+        elements.append(Paragraph("Detaylı Liste:", styles['Heading4']))
         elements.append(Spacer(1, 5))
         
-        data = [['İşlem', 'Ağaç Cinsi', 'Adet', 'En', 'Kalınlık', 'Boy', 'Hacim (m3)']]
+        data = [['Ağaç Cinsi', 'Adet', 'En', 'Kalınlık', 'Boy', 'Hacim (m3)']]
         for index, row in dataframe.iterrows():
-            data.append([row['İşlem'], row['Ağaç Cinsi'], row['Adet'], row['En'], row['Kalınlık'], row['Boy'], f"{row['Hacim (m3)']:.4f}"])
+            data.append([row['Ağaç Cinsi'], row['Adet'], row['En'], row['Kalınlık'], row['Boy'], f"{row['Hacim (m3)']:.4f}"])
         
-        t = Table(data, colWidths=[55, 90, 45, 45, 55, 50, 70])
+        t = Table(data, colWidths=[110, 60, 60, 70, 70, 90])
         style = TableStyle([
             ('FONTNAME', (0, 0), (-1, -1), tr_font),
             ('BACKGROUND', (0, 0), (-1, 0), colors.darkblue),
@@ -183,7 +181,7 @@ if len(st.session_state.veriler) > 0:
         return buffer
 
     pdf_bytes = create_pdf(df, ozet_df, genel_toplam_adet, genel_toplam_m3)
-    st.download_button(label="📄 Gelişmiş PDF İNDİR", data=pdf_bytes, file_name=f"YAFT_Gelismiş_Kereste_{datetime.datetime.now().strftime('%Y-%m-%d')}.pdf", mime="application/pdf", type="secondary", use_container_width=True)
+    st.download_button(label="📄 PDF İNDİR", data=pdf_bytes, file_name=f"YAFT_Kereste_{datetime.datetime.now().strftime('%Y-%m-%d')}.pdf", mime="application/pdf", type="secondary", use_container_width=True)
     
     if st.button("LİSTEYİ TEMİZLE", type="secondary", use_container_width=True):
         st.session_state.veriler = []
