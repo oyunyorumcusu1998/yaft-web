@@ -39,7 +39,6 @@ if 'veriler' not in st.session_state:
 with st.container():
     st.write("---")
     
-    # Ekranda seçim düğmesi kalacak ama tabloya yazılmayacak
     islem = st.radio("İşlem Türü Seçin:", ["Ekle", "Çıkar (İndirim)"], horizontal=True)
     
     agac_listesi = ["İnşaatlık", "Çam", "Meşe", "Kayın", "Gürgen", "Ladin", "Kavak", "Diğer"]
@@ -63,12 +62,15 @@ with st.container():
             hacim_m3 = (adet_giris * en * kalinlik * boy) / 1000000
             if not cins: cins = "-"
             
-            # İndirim seçildiyse metreküpü eksi yap (Adet pozitif kalır)
+            # YENİ MANTIK: İndirimse eksi yap ve "İndirim" yaz. Değilse boş bırak ("")
             if islem == "Çıkar (İndirim)":
                 hacim_m3 = -hacim_m3
+                islem_adi = "İndirim"
+            else:
+                islem_adi = "" # Normal eklemelerde hiçbir şey yazmayacak
             
-            # LİSTEYE "İşlem" YAZISI EKLENMİYOR ARTIK
             yeni_veri = {
+                "İşlem": islem_adi,
                 "Ağaç Cinsi": cins,
                 "Adet": adet_giris,
                 "En": en,
@@ -77,7 +79,12 @@ with st.container():
                 "Hacim (m3)": hacim_m3
             }
             st.session_state.veriler.append(yeni_veri)
-            st.success(f"Başarılı: {cins} işlemi eklendi!")
+            
+            # Bildirim mesajı
+            if islem_adi == "İndirim":
+                st.success(f"Başarılı: {cins} için indirim düşüldü!")
+            else:
+                st.success(f"Başarılı: {cins} listeye eklendi!")
         else:
             st.error("Lütfen ölçüleri eksiksiz girin.")
 
@@ -134,11 +141,12 @@ if len(st.session_state.veriler) > 0:
         elements.append(Paragraph("Detaylı Liste:", styles['Heading4']))
         elements.append(Spacer(1, 5))
         
-        data = [['Ağaç Cinsi', 'Adet', 'En', 'Kalınlık', 'Boy', 'Hacim (m3)']]
+        # "İşlem" sütunu PDF'e geri eklendi
+        data = [['İşlem', 'Ağaç Cinsi', 'Adet', 'En', 'Kalınlık', 'Boy', 'Hacim (m3)']]
         for index, row in dataframe.iterrows():
-            data.append([row['Ağaç Cinsi'], row['Adet'], row['En'], row['Kalınlık'], row['Boy'], f"{row['Hacim (m3)']:.4f}"])
+            data.append([row['İşlem'], row['Ağaç Cinsi'], row['Adet'], row['En'], row['Kalınlık'], row['Boy'], f"{row['Hacim (m3)']:.4f}"])
         
-        t = Table(data, colWidths=[110, 60, 60, 70, 70, 90])
+        t = Table(data, colWidths=[60, 90, 45, 45, 55, 50, 75])
         style = TableStyle([
             ('FONTNAME', (0, 0), (-1, -1), tr_font),
             ('BACKGROUND', (0, 0), (-1, 0), colors.darkblue),
